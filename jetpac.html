@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>jetpac</title>
+  <script src="../jsgame0.js"></script>
+  <style type="text/css" media="screen">
+body {
+  background-color: white;
+  color: black;
+}
+.hidden {
+  display: none;
+}
+#original {
+  margin-left: 1em;
+}
+  </style>
+</head>
+
+<body>
+<section id="imageLoader" class="hidden">
+  <img class="hidden" src="images/fuel.png" alt="fuel">
+  <img class="hidden" src="images/ground.png" alt="ground">
+  <img class="hidden" src="images/jetmanl.png" alt="jetmanl">
+  <img class="hidden" src="images/jetmanlf.png" alt="jetmanlf">
+  <img class="hidden" src="images/jetmanr.png" alt="jetmanr">
+  <img class="hidden" src="images/jetmanrf.png" alt="jetmanrf">
+  <img class="hidden" src="images/platform1.png" alt="platform1">
+  <img class="hidden" src="images/platform2.png" alt="platform2">
+  <img class="hidden" src="images/platform3.png" alt="platform3">
+  <img class="hidden" src="images/rocket1.png" alt="rocket1">
+  <img class="hidden" src="images/rocket1f.png" alt="rocket1f">
+  <img class="hidden" src="images/rocket2.png" alt="rocket2">
+  <img class="hidden" src="images/rocket2f.png" alt="rocket2f">
+  <img class="hidden" src="images/rocket3.png" alt="rocket3">
+  <img class="hidden" src="images/rocket3f.png" alt="rocket3f">
+  <img class="hidden" src="images/rocketfire.png" alt="rocketfire">
+</section>
+
+<main>
+<h1>jetpac</h1>
+
+<canvas id="screen">
+The game screen appears here if your browser supports the Canvas API.
+</canvas>
+<section id="controls">
+  <button type="button" id="reset">Reset</button>
+  <button type="button" id="pause">Pause</button>
+</section>
+
+<h2>Attribution</h2>
+
+<p><a href="https://wireframe.raspberrypi.org/issues/40">Code Jetpac's rocket-building action, pages 66-67, by Mark Vanstone</a>.</p>
+
+<p>Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/legalcode">Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported</a>.</p>
+
+<h2>Original Python code</h2>
+
+<pre id="original"><code>
+# Jet Pac
+import random
+import time
+t0 = time.clock()
+jetman = Actor(&#x27;jetmanl&#x27;,(400,500))
+ground = Actor(&#x27;ground&#x27;,(400,550))
+platform1 = Actor(&#x27;platform1&#x27;,(400,350))
+platform2 = Actor(&#x27;platform2&#x27;,(200,200))
+platform3 = Actor(&#x27;platform3&#x27;,(650,200))
+rocket1 = Actor(&#x27;rocket1&#x27;,(520,500))
+rocket2 = Actor(&#x27;rocket2&#x27;,(400,300))
+rocket3 = Actor(&#x27;rocket3&#x27;,(200,150))
+rocketFire = Actor(&#x27;rocketfire&#x27;,(521,0))
+fuel = Actor(&#x27;fuel&#x27;,(50,-50))
+gravityList = [jetman,rocket1,rocket2,rocket3,fuel]
+drawList = [rocket1,rocket2,rocket3,ground,platform1,platform2,platform3,fuel]
+platformList = [ground,platform1,platform2,platform3]
+collideList = [rocket1,rocket2,rocket3]
+pickupList = [rocket2,rocket3,fuel,0,fuel,0,fuel,0,0]
+gravity = 1.5
+jetman.thrust = jetman.holding = jetman.item = gameState = fuelLevel = timeElapsed = 0
+jetman.dir = &quot;l&quot;
+
+def draw():
+    global timeElapsed
+    screen.clear()
+    for i in range(0, len(drawList)):
+        drawList[i].draw()
+    if gameState == 0:
+        jetman.draw()
+        timeElapsed = int(time.clock() - t0)
+    else:
+        rocketFire.draw()
+        screen.draw.text(&quot;MISSION ACCOMPLISHED&quot;, center = (400, 300), owidth=0.5, ocolor=(255,255,255), color=(0,0,255) , fontsize=80)
+    screen.draw.text(&quot;TIME:&quot;+str(timeElapsed), center= (400, 20), owidth=0.5, ocolor=(255,255,255), color=(255,0,0) , fontsize=40)
+
+def update():
+    global gameState, fuelLevel
+    burn = &quot;&quot;
+    if gameState == 0:
+        if keyboard.up:
+            jetman.thrust = limit(jetman.thrust+0.3,0,5)
+            burn = &quot;f&quot;
+        if keyboard.left:
+            jetman.dir = &quot;l&quot;
+            jetman.x -= 1
+        if keyboard.right:
+            jetman.dir = &quot;r&quot;
+            jetman.x += 1
+        applyGravity()
+        coll = checkCollisions(platformList,(jetman.x,jetman.y-32))
+        if coll == False:
+            jetman.y -= jetman.thrust
+        if pickupList[jetman.item] != 0:
+            if checkTouching(pickupList[jetman.item], jetman):
+                jetman.holding = pickupList[jetman.item]
+        jetman.thrust = limit(jetman.thrust-0.1,0,5)
+        jetman.image = &quot;jetman&quot; + jetman.dir + burn
+        if jetman.holding != 0 :
+            jetman.holding.pos = jetman.pos
+            if jetman.holding.x == rocket1.x and jetman.holding.y &lt; 440:
+                jetman.holding = 0
+                jetman.item += 1
+        if fuel.x == rocket1.x and fuel.y+16 &gt; rocket3.y-32 and jetman.holding == 0:
+            fuelLevel += 1
+            if fuelLevel &lt; 4:
+                jetman.item += 1
+                if fuelLevel &lt; 3 :
+                    fuel.pos = (random.randint(50, 750),-50)
+                else:
+                    fuel.pos = (0,650)
+                gravityList[fuelLevel].image = &quot;rocket&quot;+str(fuelLevel)+&quot;f&quot;
+        if fuelLevel == 3 and jetman.x == rocket1.x and jetman.y &gt; rocket3.y:
+            gameState = 1
+    if gameState == 1:
+        rocket1.y -= 1
+        rocket2.y -= 1
+        rocket3.y -= 1
+        rocketFire.y = rocket1.y + 50
+
+def limit(n, minn, maxn):
+    return max(min(maxn, n), minn)
+
+def checkCollisions(cList, point):
+    for i in range(0, len(cList)):
+        if cList[i].collidepoint(point):
+            return True
+    return False
+
+def checkTouching(a1,a2):
+    if a1.colliderect(a2): return True
+    return False
+
+def applyGravity():
+    for i in range(0, len(gravityList)):
+        if checkCollisions(platformList,(gravityList[i].x,gravityList[i].y+(gravityList[i].height/2))) == False and checkCollisions(collideList,(gravityList[i].x,gravityList[i].y+(gravityList[i].height/2))) == False:
+            gravityList[i].y += gravity
+</code></pre>
+</main>
+
+<script>
+// Jet Pac
+const GRAVITY = 1.5;
+
+var jetman, ground, platform1, platform2, platform3, rocket1, rocket2, rocket3, rocketFire, fuel, gravityList, drawList, platformList, collideList, pickupList, gameState, fuelLevel, timeElapsed;
+
+function reset() {
+  jetman = new Actor('jetmanl');
+  jetman.pos = [400, 500];
+  jetman.thrust = 0;
+  jetman.holding = 0;
+  jetman.item = 0;
+  jetman.dir = "l";
+
+  ground = new Actor('ground');
+  ground.pos = [400, 550];
+  platform1 = new Actor('platform1');
+  platform1.pos = [400, 350];
+  platform2 = new Actor('platform2');
+  platform2.pos = [200, 200];
+  platform3 = new Actor('platform3');
+  platform3.pos = [650, 200];
+  rocket1 = new Actor('rocket1');
+  rocket1.pos = [520, 500];
+  rocket2 = new Actor('rocket2');
+  rocket2.pos = [400, 300];
+  rocket3 = new Actor('rocket3');
+  rocket3.pos = [200, 150];
+  rocketFire = new Actor('rocketfire');
+  rocketFire.pos = [521, 0];
+  fuel = new Actor('fuel');
+  fuel.pos = [50, -50];
+  gravityList = [jetman, rocket1, rocket2, rocket3, fuel];
+  drawList = [rocket1, rocket2, rocket3, ground, platform1, platform2, platform3, fuel];
+  platformList = [ground, platform1, platform2, platform3];
+  collideList = [rocket1, rocket2, rocket3];
+  pickupList = [rocket2, rocket3, fuel, 0, fuel, 0, fuel, 0, 0];
+
+  gameState = 0;
+  fuelLevel = 0;
+  timeElapsed = 0;
+}
+
+function draw() {
+  screen.clear();
+  for (let i of drawList) {
+    i.draw();
+  }
+  if (gameState === 0) {
+    jetman.draw();
+  }
+  else {
+    rocketFire.draw();
+    screen.draw.text("MISSION ACCOMPLISHED", {
+      center: [400, 300],
+      owidth: 0.5,
+      ocolor: [255, 255, 255],
+      color: [0, 0, 255],
+      fontsize: 80
+    });
+  }
+  screen.draw.text("TIME:" + timeElapsed.toFixed(0), {
+    center: [400, 20],
+    owidth: 0.5,
+    ocolor: [255, 255, 255],
+    color: [255, 0, 0],
+    fontsize: 40
+  });
+}
+
+/*
+ * Return a random integer N such that min <= N < max.
+ */
+function getRandomInteger(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor((Math.random() * (max - min)) + min);
+}
+
+function update(dt) {
+  let burn = "";
+  if (gameState === 0) {
+    timeElapsed += dt;
+    if (keyboard[keys.UP]) {
+      jetman.thrust = limit(jetman.thrust + 0.3, 0, 5);
+      burn = "f";
+    }
+    if (keyboard[keys.LEFT]) {
+      jetman.dir = "l";
+      jetman.posx -= 1;
+    }
+    if (keyboard[keys.RIGHT]) {
+      jetman.dir = "r";
+      jetman.posx += 1;
+    }
+    applyGravity();
+    if (!checkCollisions(platformList, jetman.posx, jetman.posy - 32)) {
+      jetman.posy -= jetman.thrust;
+    }
+    if (pickupList[jetman.item] !== 0) {
+      if (checkTouching(pickupList[jetman.item], jetman)) {
+        jetman.holding = pickupList[jetman.item];
+      }
+    }
+    jetman.thrust = limit(jetman.thrust - 0.1, 0, 5);
+    jetman.name = "jetman" + jetman.dir + burn;
+    if (jetman.holding !== 0) {
+      jetman.holding.pos = jetman.pos;
+      if ((jetman.holding.posx === rocket1.posx) && (jetman.holding.posy < 440)) {
+        jetman.holding = 0;
+        jetman.item += 1;
+      }
+    }
+    if ((fuel.posx === rocket1.posx) && ((fuel.posy + 16) > (rocket3.posy - 32)) && (jetman.holding === 0)) {
+      fuelLevel += 1;
+      if (fuelLevel < 4) {
+        jetman.item += 1;
+        if (fuelLevel < 3) {
+          fuel.pos = [getRandomInteger(50, 751), -50];
+        }
+        else {
+          fuel.pos = [0, 650];
+        }
+        gravityList[fuelLevel].name = "rocket" + fuelLevel + "f";
+      }
+    }
+    if ((fuelLevel === 3) && (jetman.posx === rocket1.posx) && (jetman.posy > rocket3.posy)) {
+      gameState = 1;
+    }
+  }
+  if (gameState === 1) {
+    rocket1.posy -= 1;
+    rocket2.posy -= 1;
+    rocket3.posy -= 1;
+    rocketFire.posy = rocket1.posy + 50;
+  }
+}
+
+function limit(n, minn, maxn) {
+  return Math.max(Math.min(maxn, n), minn);
+}
+
+function checkCollisions(cList, x, y) {
+  for (let i of cList) {
+    if (i.collidepoint(x, y)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function checkTouching(a1, a2) {
+  return a1.colliderect(a2);
+}
+
+function applyGravity() {
+  for (let i of gravityList) {
+    if ((!checkCollisions(platformList, i.posx, i.posy + (i.height / 2))) && (!checkCollisions(collideList, i.posx, i.posy + (i.height / 2)))) {
+      i.posy += GRAVITY;
+    }
+  }
+}
+
+window.addEventListener('load', (event) => {
+  images.LOAD('#imageLoader img');
+  reset();
+  screen.set_mode('#screen', '#reset', '#pause');
+});
+</script>
+</body>
+
+</html>
